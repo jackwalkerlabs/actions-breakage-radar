@@ -22,6 +22,14 @@ test('scan results offer a qualified continuous-monitoring interest path', async
   assert.match(html, /\.monitoring\[hidden\]\s*\{ display:none/);
 });
 
+test('web app turns scanner traffic into free GitHub Action adoption', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /Automate this check on every pull request/);
+  assert.match(html, /jackwalkerlabs\/actions-breakage-radar@v1/);
+  assert.match(html, /github\.com\/marketplace\/actions\/actions-breakage-radar/);
+  assert.match(html, /Free and advisory by default/);
+});
+
 test('web app links to the latest verifiable public scan report', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const report = await readFile(new URL('../reports/2026-07-10-active-workflows.md', import.meta.url), 'utf8');

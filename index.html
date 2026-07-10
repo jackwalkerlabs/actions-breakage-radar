@@ -44,6 +44,12 @@
     .trust > div { border:1px solid var(--border2); background:var(--surface); border-radius:10px; padding:14px 16px; text-align:left; }
     .trust strong { display:block; font-size:13px; margin-bottom:5px; }
     .trust span { color:var(--muted); font-size:12px; line-height:1.5; }
+    .action-install { max-width:820px; margin:0 auto 50px; border:1px solid rgba(113,112,255,.25); border-radius:14px; padding:22px; background:linear-gradient(135deg,rgba(113,112,255,.1),rgba(255,255,255,.025)); display:grid; grid-template-columns:1fr auto; align-items:center; gap:22px; }
+    .action-install h2 { margin:0 0 8px; font-size:18px; font-weight:600; letter-spacing:-.2px; }
+    .action-install p { margin:0 0 14px; color:var(--muted); font-size:13px; line-height:1.55; }
+    .action-install code { display:block; color:var(--soft); font:12px "JetBrains Mono",monospace; overflow-wrap:anywhere; }
+    .action-install a { border:1px solid rgba(166,165,255,.3); border-radius:9px; padding:12px 15px; color:#d3d2ff; text-decoration:none; font-size:13px; font-weight:600; white-space:nowrap; }
+    .action-install a:hover { background:rgba(113,112,255,.14); }
     #status { min-height:28px; max-width:820px; margin:0 auto 14px; color:var(--muted); font:13px "JetBrains Mono",monospace; }
     #status.error { color:var(--danger); }
     #results { max-width:820px; margin:0 auto 96px; display:none; }
@@ -77,7 +83,7 @@
     .monitoring a { flex:none; border:1px solid rgba(166,165,255,.3); border-radius:9px; padding:11px 14px; color:#c5c4ff; text-decoration:none; font-size:13px; font-weight:600; }
     .monitoring a:hover { background:rgba(113,112,255,.12); }
     footer { padding:30px 0 46px; border-top:1px solid var(--border2); display:flex; justify-content:space-between; color:var(--muted); font-size:12px; gap:20px; }
-    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr} .summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px}.monitoring{align-items:flex-start;flex-direction:column}.monitoring a{width:100%;text-align:center} footer{flex-direction:column} }
+    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr}.action-install{grid-template-columns:1fr}.action-install a{width:100%;text-align:center}.summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px}.monitoring{align-items:flex-start;flex-direction:column}.monitoring a{width:100%;text-align:center} footer{flex-direction:column} }
   </style>
 </head>
 <body>
@@ -113,6 +119,15 @@
         <div><strong>Evidence, not vibes</strong><span>Every finding links to source evidence and the exact workflow line.</span></div>
         <div><strong>Deliberately narrow</strong><span>Only high-confidence breakage checks. Fewer false alarms.</span></div>
       </div>
+
+      <section class="action-install" aria-labelledby="action-install-title">
+        <div>
+          <h2 id="action-install-title">Automate this check on every pull request</h2>
+          <p>Free and advisory by default. The Action runs inside GitHub and sends no repository contents anywhere.</p>
+          <code>uses: jackwalkerlabs/actions-breakage-radar@v1</code>
+        </div>
+        <a href="https://github.com/marketplace/actions/actions-breakage-radar" target="_blank" rel="noreferrer">Install free Action →</a>
+      </section>
 
       <div id="status" role="status" aria-live="polite"></div>
       <section id="results" aria-live="polite">
