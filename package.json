@@ -1,0 +1,6 @@
+{
+  "name": "actions-breakage-radar",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node --test"}
+}
