@@ -7,7 +7,30 @@ Current checks:
 - Retired GitHub-hosted runners: `ubuntu-20.04`, `windows-2019`, `macos-13`
 - Blocked artifact actions: `actions/upload-artifact@v1-v3`, `actions/download-artifact@v1-v3`
 
-Every finding links to the exact workflow line and official/public deprecation evidence. The scanner reads active workflows on the default branch through GitHub's public API and stores nothing.
+Every finding links to the exact workflow line and official/public deprecation evidence. The browser scanner reads active workflows on the default branch through GitHub's public API and stores nothing.
+
+## Monitor on every change
+
+Add this workflow to get line-level workflow annotations and a job summary on pull requests and manual runs:
+
+```yaml
+name: Actions breakage radar
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jackwalkerlabs/actions-breakage-radar@v1
+        with:
+          fail-on-findings: false
+```
+
+The Action scans checked-out `.github/workflows/*.yml` and `.yaml` workflow files. It has no runtime dependencies and does not send repository contents anywhere. The default is advisory: findings create workflow annotations but do not fail the job. Set `fail-on-findings: true` only when you want a finding to block the check.
 
 ## Public field scan
 

@@ -1,0 +1,19 @@
+name: Actions Breakage Radar
+description: Find retired runners and blocked GitHub Action versions in checked-out workflow files.
+author: Jack Walker Labs
+inputs:
+  fail-on-findings:
+    description: Return a failing exit code when critical findings exist.
+    required: false
+    default: 'false'
+outputs:
+  findings:
+    description: Number of critical breakage findings.
+  files-scanned:
+    description: Number of workflow files scanned.
+runs:
+  using: 'node24'
+  main: 'action.mjs'
+branding:
+  icon: 'radio'
+  color: 'purple'
