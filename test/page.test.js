@@ -13,6 +13,15 @@ test('web app exposes the scanner, evidence promise, and privacy disclosure', as
   assert.match(html, /type="module"/);
 });
 
+test('scan results offer a qualified continuous-monitoring interest path', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /Get continuous monitoring/);
+  assert.match(html, /github\.com\/jackwalkerlabs\/actions-breakage-radar\/issues\/new/);
+  assert.match(html, /Continuous monitoring interest/);
+  assert.match(html, /repository scan/);
+  assert.match(html, /\.monitoring\[hidden\]\s*\{ display:none/);
+});
+
 test('web app links to the latest verifiable public scan report', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const report = await readFile(new URL('../reports/2026-07-10-active-workflows.md', import.meta.url), 'utf8');

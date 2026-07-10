@@ -70,8 +70,14 @@
     .empty { border:1px solid rgba(53,199,137,.24); background:rgba(53,199,137,.05); border-radius:12px; padding:26px; text-align:center; }
     .empty strong { display:block; margin-bottom:8px; color:#87e2bc; }
     .empty p { margin:0; color:var(--muted); font-size:13px; line-height:1.6; }
+    .monitoring { margin-top:20px; border:1px solid rgba(113,112,255,.28); background:rgba(113,112,255,.07); border-radius:12px; padding:20px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    .monitoring[hidden] { display:none; }
+    .monitoring strong { display:block; margin-bottom:7px; font-size:14px; }
+    .monitoring p { margin:0; color:var(--muted); font-size:13px; line-height:1.5; }
+    .monitoring a { flex:none; border:1px solid rgba(166,165,255,.3); border-radius:9px; padding:11px 14px; color:#c5c4ff; text-decoration:none; font-size:13px; font-weight:600; }
+    .monitoring a:hover { background:rgba(113,112,255,.12); }
     footer { padding:30px 0 46px; border-top:1px solid var(--border2); display:flex; justify-content:space-between; color:var(--muted); font-size:12px; gap:20px; }
-    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr} .summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px} footer{flex-direction:column} }
+    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr} .summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px}.monitoring{align-items:flex-start;flex-direction:column}.monitoring a{width:100%;text-align:center} footer{flex-direction:column} }
   </style>
 </head>
 <body>
@@ -118,6 +124,10 @@
         </div>
         <div class="result-head"><h2>Breakage report</h2><span id="result-note"></span></div>
         <div id="finding-list"></div>
+        <div class="monitoring" id="monitoring-cta">
+          <div><strong>Want this checked automatically?</strong><p>Register interest in continuous monitoring for the repository scan you just ran. No commitment or payment.</p></div>
+          <a id="monitoring-link" href="https://github.com/jackwalkerlabs/actions-breakage-radar/issues/new?title=Continuous%20monitoring%20interest" target="_blank" rel="noreferrer">Get continuous monitoring →</a>
+        </div>
       </section>
     </main>
 
@@ -137,6 +147,8 @@
     const status = document.querySelector('#status');
     const results = document.querySelector('#results');
     const list = document.querySelector('#finding-list');
+    const monitoringCta = document.querySelector('#monitoring-cta');
+    const monitoringLink = document.querySelector('#monitoring-link');
 
     const el = (tag, className, text) => {
       const node = document.createElement(tag);
@@ -154,6 +166,13 @@
       document.querySelector('#metric-score').textContent = `${score}/100`;
       document.querySelector('#result-note').textContent = demo ? 'Illustrative fixture — not a live repository' : `default branch: ${report.branch}`;
       list.replaceChildren();
+      monitoringCta.hidden = demo;
+      if (!demo) {
+        const issueUrl = new URL('https://github.com/jackwalkerlabs/actions-breakage-radar/issues/new');
+        issueUrl.searchParams.set('title', `Continuous monitoring interest: ${report.repository}`);
+        issueUrl.searchParams.set('body', `I ran a repository scan for ${report.repository} and want to hear about continuous monitoring.\n\nUseful alert destination (optional):\nOther must-have checks (optional):`);
+        monitoringLink.href = issueUrl;
+      }
 
       if (!report.workflowCount) {
         const empty = el('div', 'empty');
