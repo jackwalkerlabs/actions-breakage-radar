@@ -17,6 +17,15 @@ python3 -m http.server 8877
 
 Open `http://127.0.0.1:8877`.
 
+## Build and deploy
+
+```bash
+npm run build
+npx --yes netlify-cli@26.2.0 deploy --prod
+```
+
+The production artifact contains only `index.html` and `scanner.js`. Netlify security headers are configured in `netlify.toml`.
+
 ## Test
 
 ```bash

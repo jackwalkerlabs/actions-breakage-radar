@@ -2,5 +2,8 @@
   "name": "actions-breakage-radar",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test"}
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test"
+  }
 }
