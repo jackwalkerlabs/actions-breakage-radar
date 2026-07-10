@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-10T21:54:55.832Z",
+  "source": {
+    "provider": "GitHub REST API",
+    "query": "stars:100..1000 pushed:>=2026-06-10 archived:false fork:false",
+    "selection": "first 48 unique search results plus two known-positive repositories",
+    "notPrevalenceEstimate": true
+  },
+  "scanner": {
+    "sha256": "9041ed2f2a9e351d1859e6316a0171f0bcf86e54ceeecda78da773616a77b0a8",
+    "checks": [
+      "retired-runner",
+      "blocked-action"
+    ],
+    "activeWorkflowsOnly": true,
+    "defaultBranchContentsAuthoritative": true
+  },
+  "counts": {
+    "repositoriesSelected": 50,
+    "uniqueRepositories": 50,
+    "repositoriesScanned": 50,
+    "failures": 0,
+    "riskyRepositories": 2,
+    "findings": 2
+  },
+  "repositories": [
+    "luoyesiqiu/dpt-shell",
+    "carcabot/tiktok-signature",
+    "hmailserver/hmailserver",
+    "matomo-org/docker",
+    "BRL-CAD/brlcad",
+    "Logflare/logflare",
+    "echavet/MitsubishiCN105ESPHome",
+    "gophercloud/gophercloud",
+    "coin-or/Cbc",
+    "lukebarousse/Excel_Data_Analytics_Course",
+    "pradt2/always-online-stun",
+    "piotrnar/gocoin",
+    "lukas-krecan/JsonUnit",
+    "redox-os/relibc",
+    "maxcountryman/axum-login",
+    "auth0/auth0-spa-js",
+    "foxglove/mcap",
+    "paean-ai/deeptide",
+    "Supreeeme/xwayland-satellite",
+    "marwin1991/profile-technology-icons",
+    "adafruit/Adafruit_CircuitPython_Bundle",
+    "itay-grudev/SingleApplication",
+    "jonwiggins/optio",
+    "WecoAI/awesome-autoresearch",
+    "gimli-rs/gimli",
+    "nuxt-modules/device",
+    "Dong90/oh-my-taiyiforge",
+    "one-aalam/awesome-solid-js",
+    "sebpiq/WebPd",
+    "mehdihadeli/food-delivery-microservices",
+    "ndless-nspire/Ndless",
+    "vivisect/vivisect",
+    "djkoloski/rust_serialization_benchmark",
+    "JuliaDiff/ForwardDiff.jl",
+    "asciimath/asciimathml",
+    "minirust/minirust",
+    "LemmyNet/lemmy-ui",
+    "wso2/product-apim",
+    "eslint-community/eslint-plugin-promise",
+    "catppuccin/vscode-icons",
+    "g0ldyy/comet",
+    "microsoft/DevSkim",
+    "webgpu/webgpufundamentals",
+    "nix-community/naersk",
+    "adamralph/minver",
+    "justrach/turboAPI",
+    "pydot/pydot",
+    "MangoAutomation/modbus4j",
+    "darkweak/souin",
+    "koide3/small_gicp"
+  ],
+  "failures": [],
+  "findings": [
+    {
+      "repository": "darkweak/souin",
+      "branch": "master",
+      "repositoryUrl": "https://github.com/darkweak/souin",
+      "workflowCount": 6,
+      "findings": [
+        {
+          "code": "blocked-action",
+          "severity": "critical",
+          "file": ".github/workflows/release.yml",
+          "line": 122,
+          "title": "actions/upload-artifact@v3 is blocked",
+          "detail": "GitHub retired v1-v3 of the artifact actions on GitHub.com, so this step can fail immediately.",
+          "fix": "Upgrade to actions/upload-artifact@v4 and review the v4 migration notes.",
+          "evidenceUrl": "https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/",
+          "sourceUrl": "https://github.com/darkweak/souin/blob/master/.github/workflows/release.yml#L122"
+        }
+      ]
+    },
+    {
+      "repository": "koide3/small_gicp",
+      "branch": "master",
+      "repositoryUrl": "https://github.com/koide3/small_gicp",
+      "workflowCount": 9,
+      "findings": [
+        {
+          "code": "blocked-action",
+          "severity": "critical",
+          "file": ".github/workflows/paper.yml",
+          "line": 23,
+          "title": "actions/upload-artifact@v3 is blocked",
+          "detail": "GitHub retired v1-v3 of the artifact actions on GitHub.com, so this step can fail immediately.",
+          "fix": "Upgrade to actions/upload-artifact@v4 and review the v4 migration notes.",
+          "evidenceUrl": "https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/",
+          "sourceUrl": "https://github.com/koide3/small_gicp/blob/master/.github/workflows/paper.yml#L23"
+        }
+      ]
+    }
+  ]
+}

@@ -36,6 +36,9 @@
     .primary:hover { background:#6867df; }
     button:disabled { opacity:.55; cursor:wait; transform:none; }
     .scanner-footer { padding:9px 8px 2px; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); font-size:12px; }
+    .scanner-links { display:flex; align-items:center; gap:14px; }
+    .field-report { color:#a6a5ff; text-decoration:none; font-weight:500; }
+    .field-report:hover { text-decoration:underline; }
     .link-button { padding:0; border:0; background:none; color:var(--soft); font:500 12px Inter,sans-serif; }
     .trust { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:820px; margin:0 auto 64px; }
     .trust > div { border:1px solid var(--border2); background:var(--surface); border-radius:10px; padding:14px 16px; text-align:left; }
@@ -68,7 +71,7 @@
     .empty strong { display:block; margin-bottom:8px; color:#87e2bc; }
     .empty p { margin:0; color:var(--muted); font-size:13px; line-height:1.6; }
     footer { padding:30px 0 46px; border-top:1px solid var(--border2); display:flex; justify-content:space-between; color:var(--muted); font-size:12px; gap:20px; }
-    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{align-items:flex-start} .trust{grid-template-columns:1fr} .summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px} footer{flex-direction:column} }
+    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr} .summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px} footer{flex-direction:column} }
   </style>
 </head>
 <body>
@@ -92,7 +95,10 @@
         </form>
         <div class="scanner-footer">
           <span>Public repositories only. Nothing is stored.</span>
-          <button type="button" class="link-button" id="demo-button">Load a risky example →</button>
+          <div class="scanner-links">
+            <a class="field-report" href="https://github.com/jackwalkerlabs/actions-breakage-radar/blob/main/reports/2026-07-10-active-workflows.md" target="_blank" rel="noreferrer">Latest field scan: 50-repository validation set →</a>
+            <button type="button" class="link-button" id="demo-button">Load a risky example →</button>
+          </div>
         </div>
       </section>
 
@@ -151,7 +157,7 @@
 
       if (!report.workflowCount) {
         const empty = el('div', 'empty');
-        empty.append(el('strong', '', 'No workflow files found'), el('p', '', 'This repository has no YAML workflows in .github/workflows on its default branch.'));
+        empty.append(el('strong', '', 'No active workflow files found'), el('p', '', 'This repository has no active YAML workflows in .github/workflows on its default branch.'));
         list.append(empty);
       } else if (!report.findings.length) {
         const empty = el('div', 'empty');

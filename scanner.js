@@ -67,6 +67,26 @@ export async function scanRepository(input, fetchImpl = fetch) {
   }
   const repoData = await repoResponse.json();
   const branch = repoData.default_branch;
+  const activeWorkflowPaths = new Set();
+  let workflowPage = 1;
+  let workflowStatesSeen = 0;
+  while (true) {
+    const statesResponse = await fetchImpl(`${apiBase}/actions/workflows?per_page=100&page=${workflowPage}`, { headers });
+    if (!statesResponse.ok) {
+      throw new Error(`GitHub returned HTTP ${statesResponse.status} while listing active workflows.`);
+    }
+    const statesData = await statesResponse.json();
+    if (!Array.isArray(statesData.workflows)) {
+      throw new Error('GitHub returned malformed workflow state data.');
+    }
+    for (const workflow of statesData.workflows) {
+      if (workflow.state === 'active' && workflow.path) activeWorkflowPaths.add(workflow.path);
+    }
+    workflowStatesSeen += statesData.workflows.length;
+    const totalCount = Number.isInteger(statesData.total_count) ? statesData.total_count : null;
+    if (statesData.workflows.length < 100 || (totalCount !== null && workflowStatesSeen >= totalCount)) break;
+    workflowPage += 1;
+  }
   const workflowsResponse = await fetchImpl(`${apiBase}/contents/.github/workflows?ref=${encodeURIComponent(branch)}`, { headers });
   if (!workflowsResponse.ok) {
     if (workflowsResponse.status === 404) {
@@ -76,11 +96,20 @@ export async function scanRepository(input, fetchImpl = fetch) {
   }
 
   const entries = await workflowsResponse.json();
-  const workflows = entries.filter((entry) => /\.ya?ml$/i.test(entry.name || '') && entry.download_url);
+  const workflows = entries.filter((entry) =>
+    /\.ya?ml$/i.test(entry.path || entry.name || '') && activeWorkflowPaths.has(entry.path)
+  );
+  for (const workflow of workflows) {
+    if (!workflow.download_url) {
+      throw new Error(`Active workflow ${workflow.path} has no readable content URL.`);
+    }
+  }
   const findings = [];
   for (const workflow of workflows) {
     const response = await fetchImpl(workflow.download_url);
-    if (!response.ok) continue;
+    if (!response.ok) {
+      throw new Error(`GitHub returned HTTP ${response.status} while reading ${workflow.path}.`);
+    }
     const content = await response.text();
     for (const finding of analyzeWorkflow(workflow.path, content)) {
       findings.push({

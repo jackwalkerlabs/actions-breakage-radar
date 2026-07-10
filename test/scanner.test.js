@@ -33,6 +33,9 @@ test('scanRepository fetches public workflow files and returns findings', async 
   const { scanRepository } = await import('../scanner.js');
   const responses = new Map([
     ['https://api.github.com/repos/acme/widget', { default_branch: 'main', html_url: 'https://github.com/acme/widget' }],
+    ['https://api.github.com/repos/acme/widget/actions/workflows?per_page=100&page=1', { workflows: [
+      { path: '.github/workflows/ci.yml', state: 'active' }
+    ] }],
     ['https://api.github.com/repos/acme/widget/contents/.github/workflows?ref=main', [
       { name: 'ci.yml', path: '.github/workflows/ci.yml', download_url: 'https://raw.example/ci.yml', html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/ci.yml' }
     ]],
@@ -49,4 +52,175 @@ test('scanRepository fetches public workflow files and returns findings', async 
   assert.equal(report.workflowCount, 1);
   assert.equal(report.findings[0].code, 'retired-runner');
   assert.equal(report.findings[0].sourceUrl, 'https://github.com/acme/widget/blob/main/.github/workflows/ci.yml#L3');
+});
+
+test('scanRepository reads all workflow-state pages', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const apiBase = 'https://api.github.com/repos/acme/widget';
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    path: `.github/workflows/disabled-${index}.yml`,
+    state: 'disabled_manually'
+  }));
+  const fetchImpl = async (url) => {
+    if (url === apiBase) {
+      return { ok: true, status: 200, json: async () => ({ default_branch: 'main', html_url: 'https://github.com/acme/widget' }) };
+    }
+    if (url === `${apiBase}/actions/workflows?per_page=100&page=1`) {
+      return { ok: true, status: 200, json: async () => ({ total_count: 101, workflows: firstPage }) };
+    }
+    if (url === `${apiBase}/actions/workflows?per_page=100&page=2`) {
+      return { ok: true, status: 200, json: async () => ({ total_count: 101, workflows: [
+        { path: '.github/workflows/late.yml', state: 'active' }
+      ] }) };
+    }
+    if (url === `${apiBase}/contents/.github/workflows?ref=main`) {
+      return { ok: true, status: 200, json: async () => [
+        { name: 'late.yml', path: '.github/workflows/late.yml', download_url: 'https://raw.example/late.yml', html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/late.yml' }
+      ] };
+    }
+    if (url === 'https://raw.example/late.yml') {
+      return { ok: true, status: 200, text: async () => 'steps:\n  - uses: actions/upload-artifact@v3\n' };
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+  const report = await scanRepository('acme/widget', fetchImpl);
+  assert.equal(report.workflowCount, 1);
+  assert.equal(report.findings[0].code, 'blocked-action');
+});
+
+test('scanRepository fails closed when workflow state cannot be verified', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const fetchImpl = async (url) => {
+    if (url === 'https://api.github.com/repos/acme/widget') {
+      return { ok: true, status: 200, json: async () => ({ default_branch: 'main', html_url: 'https://github.com/acme/widget' }) };
+    }
+    if (url === 'https://api.github.com/repos/acme/widget/actions/workflows?per_page=100&page=1') {
+      return { ok: false, status: 503 };
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+  await assert.rejects(
+    scanRepository('acme/widget', fetchImpl),
+    /HTTP 503 while listing active workflows/
+  );
+});
+
+test('scanRepository fails closed when an active workflow cannot be read', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const apiBase = 'https://api.github.com/repos/acme/widget';
+  const responses = new Map([
+    [apiBase, { default_branch: 'main', html_url: 'https://github.com/acme/widget' }],
+    [`${apiBase}/actions/workflows?per_page=100&page=1`, { workflows: [
+      { path: '.github/workflows/ci.yml', state: 'active' }
+    ] }],
+    [`${apiBase}/contents/.github/workflows?ref=main`, [
+      { name: 'ci.yml', path: '.github/workflows/ci.yml', download_url: 'https://raw.example/ci.yml', html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/ci.yml' }
+    ]]
+  ]);
+  const fetchImpl = async (url) => ({
+    ok: responses.has(url),
+    status: responses.has(url) ? 200 : 502,
+    json: async () => responses.get(url),
+    text: async () => responses.get(url)
+  });
+  await assert.rejects(
+    scanRepository('acme/widget', fetchImpl),
+    /HTTP 502 while reading \.github\/workflows\/ci\.yml/
+  );
+});
+
+test('scanRepository ignores platform-generated workflows when no workflow directory exists', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const apiBase = 'https://api.github.com/repos/acme/widget';
+  const fetchImpl = async (url) => {
+    if (url === apiBase) {
+      return { ok: true, status: 200, json: async () => ({ default_branch: 'main', html_url: 'https://github.com/acme/widget' }) };
+    }
+    if (url === `${apiBase}/actions/workflows?per_page=100&page=1`) {
+      return { ok: true, status: 200, json: async () => ({ workflows: [
+        { path: 'dynamic/dependabot/dependabot-updates', state: 'active' }
+      ] }) };
+    }
+    if (url === `${apiBase}/contents/.github/workflows?ref=main`) {
+      return { ok: false, status: 404 };
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+  const report = await scanRepository('acme/widget', fetchImpl);
+  assert.equal(report.workflowCount, 0);
+  assert.deepEqual(report.findings, []);
+});
+
+test('scanRepository fails closed when an active workflow has no content URL', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const apiBase = 'https://api.github.com/repos/acme/widget';
+  const responses = new Map([
+    [apiBase, { default_branch: 'main', html_url: 'https://github.com/acme/widget' }],
+    [`${apiBase}/actions/workflows?per_page=100&page=1`, { workflows: [
+      { path: '.github/workflows/ci.yml', state: 'active' }
+    ] }],
+    [`${apiBase}/contents/.github/workflows?ref=main`, [
+      { name: 'ci.yml', path: '.github/workflows/ci.yml', download_url: null, html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/ci.yml' }
+    ]]
+  ]);
+  const fetchImpl = async (url) => ({
+    ok: responses.has(url),
+    status: responses.has(url) ? 200 : 404,
+    json: async () => responses.get(url)
+  });
+  await assert.rejects(
+    scanRepository('acme/widget', fetchImpl),
+    /Active workflow \.github\/workflows\/ci\.yml has no readable content URL/
+  );
+});
+
+test('scanRepository ignores stale active metadata absent from the default branch', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const apiBase = 'https://api.github.com/repos/acme/widget';
+  const responses = new Map([
+    [apiBase, { default_branch: 'main', html_url: 'https://github.com/acme/widget' }],
+    [`${apiBase}/actions/workflows?per_page=100&page=1`, { workflows: [
+      { path: '.github/workflows/deleted.yml', state: 'active' },
+      { path: '.github/workflows/ci.yml', state: 'active' }
+    ] }],
+    [`${apiBase}/contents/.github/workflows?ref=main`, [
+      { name: 'ci.yml', path: '.github/workflows/ci.yml', download_url: 'https://raw.example/ci.yml', html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/ci.yml' }
+    ]],
+    ['https://raw.example/ci.yml', 'jobs:\n  test:\n    runs-on: ubuntu-latest\n']
+  ]);
+  const fetchImpl = async (url) => ({
+    ok: responses.has(url),
+    status: responses.has(url) ? 200 : 404,
+    json: async () => responses.get(url),
+    text: async () => responses.get(url)
+  });
+  const report = await scanRepository('acme/widget', fetchImpl);
+  assert.equal(report.workflowCount, 1);
+  assert.deepEqual(report.findings, []);
+});
+
+test('scanRepository excludes disabled workflows from risk findings', async () => {
+  const { scanRepository } = await import('../scanner.js');
+  const responses = new Map([
+    ['https://api.github.com/repos/acme/widget', { default_branch: 'main', html_url: 'https://github.com/acme/widget' }],
+    ['https://api.github.com/repos/acme/widget/actions/workflows?per_page=100&page=1', { workflows: [
+      { path: '.github/workflows/active.yml', state: 'active' },
+      { path: '.github/workflows/disabled.yml', state: 'disabled_manually' }
+    ] }],
+    ['https://api.github.com/repos/acme/widget/contents/.github/workflows?ref=main', [
+      { name: 'active.yml', path: '.github/workflows/active.yml', download_url: 'https://raw.example/active.yml', html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/active.yml' },
+      { name: 'disabled.yml', path: '.github/workflows/disabled.yml', download_url: 'https://raw.example/disabled.yml', html_url: 'https://github.com/acme/widget/blob/main/.github/workflows/disabled.yml' }
+    ]],
+    ['https://raw.example/active.yml', 'jobs:\n  test:\n    runs-on: ubuntu-latest\n'],
+    ['https://raw.example/disabled.yml', 'jobs:\n  test:\n    runs-on: ubuntu-20.04\n']
+  ]);
+  const fetchImpl = async (url) => ({
+    ok: responses.has(url),
+    status: responses.has(url) ? 200 : 404,
+    json: async () => responses.get(url),
+    text: async () => responses.get(url)
+  });
+  const report = await scanRepository('acme/widget', fetchImpl);
+  assert.equal(report.workflowCount, 1);
+  assert.deepEqual(report.findings, []);
 });
