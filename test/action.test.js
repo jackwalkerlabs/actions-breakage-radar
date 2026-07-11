@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -27,6 +27,20 @@ test('repository exposes a dependency-free GitHub Action contract', async () => 
   assert.match(metadata, /default: ['"]false['"]/);
   assert.match(metadata, /using: ['"]node24['"]/);
   assert.match(metadata, /main: ['"]action\.mjs['"]/);
+});
+
+test('runAction rejects a workflows directory that resolves outside the workspace', async () => {
+  const { runAction } = await import('../action.mjs');
+  const root = await fixture('jobs:\n  safe:\n    runs-on: ubuntu-latest\n');
+  const external = await mkdtemp(join(tmpdir(), 'breakage-radar-external-'));
+  await writeFile(join(external, 'stolen.yml'), 'jobs:\n  test:\n    runs-on: ubuntu-20.04\n');
+  await rm(join(root, '.github', 'workflows'), { recursive: true });
+  await symlink(external, join(root, '.github', 'workflows'));
+
+  await assert.rejects(
+    runAction({ root, writeLine: () => {} }),
+    /workflows directory resolves outside the workspace/,
+  );
 });
 
 test('runAction reads the hyphenated GitHub input environment variable', async () => {
@@ -57,6 +71,24 @@ test('runAction fails only when fail-on-findings is enabled', async () => {
   assert.equal(result.exitCode, 1);
 });
 
+test('runAction renders workflow names as inert text in the job summary', async () => {
+  const { runAction } = await import('../action.mjs');
+  const root = await mkdtemp(join(tmpdir(), 'breakage-radar-'));
+  const workflows = join(root, '.github', 'workflows');
+  const summaryPath = join(root, 'summary.md');
+  await mkdir(workflows, { recursive: true });
+  await writeFile(
+    join(workflows, 'release[click](javascript:alert(1))|<img src=x>`_*~.yml'),
+    'jobs:\n  test:\n    runs-on: ubuntu-20.04\n',
+  );
+
+  await runAction({ root, summaryPath, writeLine: () => {} });
+
+  const summary = await readFile(summaryPath, 'utf8');
+  assert.doesNotMatch(summary, /<img|\[click\]\(|`_\*~/);
+  assert.match(summary, /release&#x5b;click&#x5d;&#x28;javascript&#x3a;alert&#x28;1&#x29;&#x29;&#x7c;&#x3c;img src&#x3d;x&#x3e;&#x60;&#x5f;&#x2a;&#x7e;&#x2e;yml/);
+});
+
 test('runAction annotates findings and writes a useful job summary', async () => {
   const { runAction } = await import('../action.mjs');
   const root = await fixture('name: Release\njobs:\n  ship:\n    runs-on: ubuntu-20.04\n    steps:\n      - uses: actions/upload-artifact@v3\n');
@@ -78,6 +110,6 @@ test('runAction annotates findings and writes a useful job summary', async () =>
   assert.match(lines.join('\n'), /::warning file=\.github\/workflows\/release\.yml,line=4/);
   assert.match(lines.join('\n'), /ubuntu-20\.04 is retired/);
   assert.match(await readFile(summaryPath, 'utf8'), /2 critical breakage risks found/);
-  assert.match(await readFile(summaryPath, 'utf8'), /actions\/upload-artifact@v3 is blocked/);
+  assert.match(await readFile(summaryPath, 'utf8'), /actions&#x2f;upload&#x2d;artifact&#x40;v3 is blocked/);
   assert.match(await readFile(outputPath, 'utf8'), /findings=2/);
 });

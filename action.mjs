@@ -1,6 +1,6 @@
-import { appendFile, readdir, readFile } from 'node:fs/promises';
+import { appendFile, readdir, readFile, realpath } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { join, relative, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { analyzeWorkflow } from './scanner.js';
 
 function commandValue(value) {
@@ -11,15 +11,29 @@ function commandProperty(value) {
   return commandValue(value).replaceAll(':', '%3A').replaceAll(',', '%2C');
 }
 
-async function workflowFiles(root) {
-  const directory = join(root, '.github', 'workflows');
-  let entries;
+function markdownCell(value) {
+  return Array.from(String(value), (character) => {
+    const codePoint = character.codePointAt(0);
+    if (codePoint <= 0x1f || codePoint === 0x7f) return ' ';
+    if (/^[\p{L}\p{N} ]$/u.test(character)) return character;
+    return `&#x${codePoint.toString(16)};`;
+  }).join('');
+}
+
+async function workflowFiles(workspace) {
+  const requestedDirectory = join(workspace, '.github', 'workflows');
+  let directory;
   try {
-    entries = await readdir(directory, { withFileTypes: true });
+    directory = await realpath(requestedDirectory);
   } catch (error) {
     if (error.code === 'ENOENT') return [];
     throw error;
   }
+  const directoryFromWorkspace = relative(workspace, directory);
+  if (directoryFromWorkspace === '..' || directoryFromWorkspace.startsWith(`..${sep}`) || isAbsolute(directoryFromWorkspace)) {
+    throw new Error('The .github/workflows directory resolves outside the workspace.');
+  }
+  const entries = await readdir(directory, { withFileTypes: true });
   return entries
     .filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name))
     .map((entry) => join(directory, entry.name))
@@ -34,7 +48,7 @@ function summaryFor(filesScanned, findings) {
   if (findings.length) {
     lines.push('', '| Workflow | Line | Finding | Fix |', '| --- | ---: | --- | --- |');
     for (const finding of findings) {
-      lines.push(`| \`${finding.file}\` | ${finding.line} | ${finding.title} | ${finding.fix} |`);
+      lines.push(`| ${markdownCell(finding.file)} | ${finding.line} | ${markdownCell(finding.title)} | ${markdownCell(finding.fix)} |`);
     }
   }
   lines.push('', '[Open Actions Breakage Radar](https://actions-breakage-radar.netlify.app) for evidence links and public-repository scans.', '');
@@ -48,10 +62,11 @@ export async function runAction({
   failOnFindings = /^true$/i.test(process.env['INPUT_FAIL-ON-FINDINGS'] || ''),
   writeLine = console.log,
 } = {}) {
-  const files = await workflowFiles(root);
+  const workspace = await realpath(root);
+  const files = await workflowFiles(workspace);
   const findings = [];
   for (const file of files) {
-    const path = relative(root, file).split('\\').join('/');
+    const path = relative(workspace, file).split('\\').join('/');
     const content = await readFile(file, 'utf8');
     findings.push(...analyzeWorkflow(path, content));
   }
