@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T00:35:02Z",
+  "scannerSha256": "c050b885af21fbe00cd6cf6ecc917c66485d7907b6b4268de10ab60eff34f513",
+  "source": {
+    "purpose": "Live convenience validation of Node 24 migration rules, not a prevalence estimate",
+    "officialNotice": "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+    "selection": "Two public repositories with current Node 20 migration issues plus one recently remediated repository"
+  },
+  "demandEvidence": {
+    "githubCodeSearchObservedAt": "2026-07-11T00:23:50Z",
+    "directionalCounts": {
+      "actions/checkout@v4": 36864,
+      "actions/setup-node@v4": 6036,
+      "actions/setup-python@v5": 8052,
+      "actions/cache@v4": 12092,
+      "actions/upload-artifact@v4": 4116,
+      "actions/setup-java@v4": 7724,
+      "actions/github-script@v7": 63232,
+      "docker/setup-buildx-action@v3": null,
+      "docker/login-action@v3": null
+    },
+    "limitations": "GitHub code search counts are point-in-time directional signals, can include forks or inactive files, and do not prove adoption or willingness to pay. Two queries were not counted before the search rate limit was reached."
+  },
+  "repositories": [
+    {
+      "repository": "tsviz/actions-runner-telemetry",
+      "branch": "main",
+      "workflowCount": 5,
+      "counts": { "critical": 0, "warning": 19, "total": 19 },
+      "representativeFindings": [
+        {
+          "code": "node20-action",
+          "title": "actions/checkout@v4 declares Node 20",
+          "sourceUrl": "https://github.com/tsviz/actions-runner-telemetry/blob/main/.github/workflows/example-usage.yml#L23",
+          "fix": "Upgrade to actions/checkout@v5 and test the workflow on Node 24."
+        },
+        {
+          "code": "node20-action",
+          "title": "actions/upload-artifact@v4 declares Node 20",
+          "sourceUrl": "https://github.com/tsviz/actions-runner-telemetry/blob/main/.github/workflows/example-usage.yml#L88",
+          "fix": "Upgrade to actions/upload-artifact@v6 and test the workflow on Node 24."
+        }
+      ]
+    },
+    {
+      "repository": "swimblocks/.github",
+      "branch": "main",
+      "workflowCount": 3,
+      "counts": { "critical": 0, "warning": 4, "total": 4 },
+      "representativeFindings": [
+        {
+          "code": "node20-action",
+          "title": "actions/checkout@v4 declares Node 20",
+          "sourceUrl": "https://github.com/swimblocks/.github/blob/main/.github/workflows/reconcile-repo-defaults.yml#L30",
+          "fix": "Upgrade to actions/checkout@v5 and test the workflow on Node 24."
+        },
+        {
+          "code": "node20-action",
+          "title": "actions/setup-python@v5 declares Node 20",
+          "sourceUrl": "https://github.com/swimblocks/.github/blob/main/.github/workflows/reconcile-repo-defaults.yml#L32",
+          "fix": "Upgrade to actions/setup-python@v6 and test the workflow on Node 24."
+        }
+      ]
+    },
+    {
+      "repository": "dolph/find-replace",
+      "branch": "main",
+      "workflowCount": 4,
+      "counts": { "critical": 0, "warning": 0, "total": 0 },
+      "representativeFindings": []
+    }
+  ],
+  "totals": {
+    "repositoriesScanned": 3,
+    "workflowFilesScanned": 12,
+    "repositoriesWithWarnings": 2,
+    "node20Warnings": 23,
+    "scanFailures": 0
+  }
+}

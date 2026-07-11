@@ -30,6 +30,15 @@ test('web app turns scanner traffic into free GitHub Action adoption', async () 
   assert.match(html, /Free and advisory by default/);
 });
 
+test('web app exposes Node 24 migration findings and JSON report export', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /Node 24 migration/);
+  assert.match(html, /id="metric-warnings"/);
+  assert.match(html, /id="download-report"/);
+  assert.match(html, /application\/json/);
+  assert.match(html, /actions\/checkout@v4 declares Node 20/);
+});
+
 test('web app links to the latest verifiable public scan report', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const report = await readFile(new URL('../reports/2026-07-10-active-workflows.md', import.meta.url), 'utf8');

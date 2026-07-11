@@ -41,9 +41,12 @@ async function workflowFiles(workspace) {
 }
 
 function summaryFor(filesScanned, findings) {
-  const heading = findings.length
-    ? `## ${findings.length} critical breakage risk${findings.length === 1 ? '' : 's'} found`
-    : '## No known critical breakage found';
+  const critical = findings.filter((finding) => finding.severity === 'critical').length;
+  const warnings = findings.filter((finding) => finding.severity === 'warning').length;
+  let heading = '## No known critical breakage or Node 24 migration risk found';
+  if (critical && warnings) heading = `## ${critical} critical, ${warnings} migration warning${warnings === 1 ? '' : 's'} found`;
+  else if (critical) heading = `## ${critical} critical breakage risk${critical === 1 ? '' : 's'} found`;
+  else if (warnings) heading = `## ${warnings} Node 24 migration warning${warnings === 1 ? '' : 's'} found`;
   const lines = [heading, '', `Scanned ${filesScanned} workflow file${filesScanned === 1 ? '' : 's'}.`];
   if (findings.length) {
     lines.push('', '| Workflow | Line | Finding | Fix |', '| --- | ---: | --- | --- |');
@@ -71,19 +74,39 @@ export async function runAction({
     findings.push(...analyzeWorkflow(path, content));
   }
 
+  const criticalFindings = findings.filter((finding) => finding.severity === 'critical').length;
+  const warnings = findings.filter((finding) => finding.severity === 'warning').length;
+  const report = {
+    schemaVersion: 1,
+    filesScanned: files.length,
+    counts: { critical: criticalFindings, warning: warnings, total: findings.length },
+    findings,
+  };
   const annotationLevel = failOnFindings ? 'error' : 'warning';
   for (const finding of findings) {
     const properties = `file=${commandProperty(finding.file)},line=${finding.line},title=${commandProperty('Actions Breakage Radar')}`;
     writeLine(`::${annotationLevel} ${properties}::${commandValue(`${finding.title}. ${finding.fix}`)}`);
   }
-  if (!findings.length) writeLine(`No known critical breakage found in ${files.length} workflow file${files.length === 1 ? '' : 's'}.`);
+  if (!findings.length) writeLine(`No known critical breakage or Node 24 migration risk found in ${files.length} workflow file${files.length === 1 ? '' : 's'}.`);
 
   if (summaryPath) await appendFile(summaryPath, summaryFor(files.length, findings));
-  if (outputPath) await appendFile(outputPath, `findings=${findings.length}\nfiles-scanned=${files.length}\n`);
+  if (outputPath) {
+    await appendFile(outputPath, [
+      `findings=${findings.length}`,
+      `critical-findings=${criticalFindings}`,
+      `warnings=${warnings}`,
+      `files-scanned=${files.length}`,
+      `report-json=${JSON.stringify(report)}`,
+      '',
+    ].join('\n'));
+  }
 
   return {
     filesScanned: files.length,
+    criticalFindings,
+    warnings,
     findings,
+    report,
     exitCode: failOnFindings && findings.length ? 1 : 0,
   };
 }

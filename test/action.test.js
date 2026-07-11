@@ -17,7 +17,19 @@ test('README gives a copy-paste monitoring workflow and honest behavior', async 
   assert.match(readme, /fail-on-findings: false/);
   assert.match(readme, /workflow annotations/);
   assert.match(readme, /checked-out.*workflow files/i);
+  assert.match(readme, /Node 24 migration/i);
+  assert.match(readme, /report-json/);
   assert.doesNotMatch(readme, /cron:/);
+});
+
+test('repository CI verifies tests, build, and the Action on pull requests', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /npm test/);
+  assert.match(workflow, /npm run build/);
+  assert.match(workflow, /uses: \.\//);
+  assert.match(workflow, /fail-on-findings: true/);
+  assert.match(workflow, /permissions:\n  contents: read/);
 });
 
 test('repository exposes a dependency-free GitHub Action contract', async () => {
@@ -27,6 +39,9 @@ test('repository exposes a dependency-free GitHub Action contract', async () => 
   assert.match(metadata, /default: ['"]false['"]/);
   assert.match(metadata, /using: ['"]node24['"]/);
   assert.match(metadata, /main: ['"]action\.mjs['"]/);
+  assert.match(metadata, /critical-findings:/);
+  assert.match(metadata, /warnings:/);
+  assert.match(metadata, /report-json:/);
 });
 
 test('runAction rejects a workflows directory that resolves outside the workspace', async () => {
@@ -41,6 +56,16 @@ test('runAction rejects a workflows directory that resolves outside the workspac
     runAction({ root, writeLine: () => {} }),
     /workflows directory resolves outside the workspace/,
   );
+});
+
+test('runAction reports a clean Node 24 readiness check', async () => {
+  const { runAction } = await import('../action.mjs');
+  const root = await fixture('jobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v5\n');
+  const lines = [];
+
+  await runAction({ root, writeLine: (line) => lines.push(line) });
+
+  assert.match(lines.join('\n'), /No known critical breakage or Node 24 migration risk found/);
 });
 
 test('runAction reads the hyphenated GitHub input environment variable', async () => {
@@ -87,6 +112,37 @@ test('runAction renders workflow names as inert text in the job summary', async 
   const summary = await readFile(summaryPath, 'utf8');
   assert.doesNotMatch(summary, /<img|\[click\]\(|`_\*~/);
   assert.match(summary, /release&#x5b;click&#x5d;&#x28;javascript&#x3a;alert&#x28;1&#x29;&#x29;&#x7c;&#x3c;img src&#x3d;x&#x3e;&#x60;&#x5f;&#x2a;&#x7e;&#x2e;yml/);
+});
+
+test('runAction writes severity counts and a machine-readable JSON report output', async () => {
+  const { runAction } = await import('../action.mjs');
+  const root = await fixture([
+    'name: CI',
+    'jobs:',
+    '  test:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    '      - uses: actions/checkout@v4',
+    '      - uses: actions/upload-artifact@v3',
+  ].join('\n'));
+  const summaryPath = join(root, 'summary.md');
+  const outputPath = join(root, 'output.txt');
+
+  const result = await runAction({ root, summaryPath, outputPath, writeLine: () => {} });
+
+  assert.equal(result.criticalFindings, 1);
+  assert.equal(result.warnings, 1);
+  const output = await readFile(outputPath, 'utf8');
+  assert.match(output, /findings=2/);
+  assert.match(output, /critical-findings=1/);
+  assert.match(output, /warnings=1/);
+  const reportLine = output.split('\n').find((line) => line.startsWith('report-json='));
+  const report = JSON.parse(reportLine.slice('report-json='.length));
+  assert.equal(report.schemaVersion, 1);
+  assert.equal(report.filesScanned, 1);
+  assert.deepEqual(report.counts, { critical: 1, warning: 1, total: 2 });
+  assert.deepEqual(report.findings.map((finding) => finding.code), ['node20-action', 'blocked-action']);
+  assert.match(await readFile(summaryPath, 'utf8'), /1 critical, 1 migration warning/);
 });
 
 test('runAction annotates findings and writes a useful job summary', async () => {

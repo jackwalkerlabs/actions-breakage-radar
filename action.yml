@@ -1,16 +1,22 @@
 name: Actions Breakage Radar
-description: Find retired runners and blocked GitHub Action versions in checked-out workflow files.
+description: Find retired runners, blocked action versions, and Node 24 migration risks in checked-out workflow files.
 author: Jack Walker Labs
 inputs:
   fail-on-findings:
-    description: Return a failing exit code when critical findings exist.
+    description: Return a failing exit code when any critical or migration finding exists.
     required: false
     default: 'false'
 outputs:
   findings:
+    description: Total number of breakage and migration findings.
+  critical-findings:
     description: Number of critical breakage findings.
+  warnings:
+    description: Number of Node 24 migration warnings.
   files-scanned:
     description: Number of workflow files scanned.
+  report-json:
+    description: Compact schema-versioned JSON report for downstream automation.
 runs:
   using: 'node24'
   main: 'action.mjs'
