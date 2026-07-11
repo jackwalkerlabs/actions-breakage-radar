@@ -1,7 +1,7 @@
 import { appendFile, readdir, readFile, realpath } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { analyzeWorkflow } from './scanner.js';
+import { analyzeWorkflow, createReport } from './scanner.js';
 
 function commandValue(value) {
   return String(value).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
@@ -62,6 +62,8 @@ export async function runAction({
   root = process.env.GITHUB_WORKSPACE || process.cwd(),
   summaryPath = process.env.GITHUB_STEP_SUMMARY,
   outputPath = process.env.GITHUB_OUTPUT,
+  repository = process.env.GITHUB_REPOSITORY || null,
+  branch = process.env.GITHUB_REF_NAME || null,
   failOnFindings = /^true$/i.test(process.env['INPUT_FAIL-ON-FINDINGS'] || ''),
   writeLine = console.log,
 } = {}) {
@@ -74,14 +76,9 @@ export async function runAction({
     findings.push(...analyzeWorkflow(path, content));
   }
 
-  const criticalFindings = findings.filter((finding) => finding.severity === 'critical').length;
-  const warnings = findings.filter((finding) => finding.severity === 'warning').length;
-  const report = {
-    schemaVersion: 1,
-    filesScanned: files.length,
-    counts: { critical: criticalFindings, warning: warnings, total: findings.length },
-    findings,
-  };
+  const report = createReport({ repository, branch, filesScanned: files.length, findings });
+  const criticalFindings = report.counts.critical;
+  const warnings = report.counts.warning;
   const annotationLevel = failOnFindings ? 'error' : 'warning';
   for (const finding of findings) {
     const properties = `file=${commandProperty(finding.file)},line=${finding.line},title=${commandProperty('Actions Breakage Radar')}`;

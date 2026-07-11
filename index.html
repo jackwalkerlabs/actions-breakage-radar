@@ -157,7 +157,7 @@
   </div>
 
   <script type="module">
-    import { scanRepository } from './scanner.js';
+    import { scanRepository, createReport } from './scanner.js';
 
     const form = document.querySelector('#repo-form');
     const input = document.querySelector('#repo-input');
@@ -182,14 +182,12 @@
       const critical = report.findings.filter((item) => item.severity === 'critical').length;
       const warnings = report.findings.filter((item) => item.severity === 'warning').length;
       const score = Math.min(100, critical * 35 + warnings * 10);
-      latestReport = {
-        schemaVersion: 1,
+      latestReport = createReport({
         repository: report.repository,
         branch: report.branch,
-        workflowCount: report.workflowCount,
-        counts: { critical, warning: warnings, total: report.findings.length },
+        filesScanned: report.workflowCount,
         findings: report.findings,
-      };
+      });
       document.querySelector('#metric-repo').textContent = report.repository;
       document.querySelector('#metric-workflows').textContent = report.workflowCount;
       document.querySelector('#metric-critical').textContent = critical;

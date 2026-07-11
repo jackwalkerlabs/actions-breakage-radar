@@ -34,10 +34,100 @@ const NODE20_ACTION_UPGRADES = {
 
 const NODE20_EVIDENCE_URL = 'https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/';
 
+function workflowReferences(lines) {
+  const actions = new Map();
+  const runners = new Map();
+  let jobsIndent = null;
+  let jobIndent = null;
+  let jobPropertyIndent = null;
+  let stepsIndent = null;
+  let stepIndent = null;
+  let stepKeyIndent = null;
+
+  lines.forEach((text, index) => {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const indent = text.match(/^ */)[0].length;
+
+    if (jobsIndent === null) {
+      if (indent === 0 && /^jobs:\s*(?:&[^\s#]+\s*)?(?:#.*)?$/i.test(trimmed)) jobsIndent = indent;
+      return;
+    }
+    if (indent <= jobsIndent) {
+      jobsIndent = null;
+      jobIndent = null;
+      jobPropertyIndent = null;
+      stepsIndent = null;
+      stepIndent = null;
+      stepKeyIndent = null;
+      return;
+    }
+
+    if (jobIndent === null) {
+      jobIndent = indent;
+      return;
+    }
+    if (indent === jobIndent) {
+      jobPropertyIndent = null;
+      stepsIndent = null;
+      stepIndent = null;
+      stepKeyIndent = null;
+      return;
+    }
+
+    if (stepsIndent !== null) {
+      const item = text.match(/^(\s*)-(\s+)(.*)$/);
+      const isStepItem = Boolean(item && (stepIndent === null ? indent >= stepsIndent : indent === stepIndent));
+      if (indent < stepsIndent || (indent === stepsIndent && !isStepItem)) {
+        stepsIndent = null;
+        stepIndent = null;
+        stepKeyIndent = null;
+      } else {
+        if (isStepItem) {
+          stepIndent = indent;
+          stepKeyIndent = indent + 1 + item[2].length;
+          const action = item[3].match(/^uses:\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
+          if (action) actions.set(index, action);
+          return;
+        }
+        if (stepKeyIndent !== null && indent === stepKeyIndent) {
+          const action = trimmed.match(/^uses:\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
+          if (action) actions.set(index, action);
+        }
+        return;
+      }
+    }
+
+    if (jobPropertyIndent === null) jobPropertyIndent = indent;
+    if (indent === jobPropertyIndent) {
+      const runner = trimmed.match(/^runs-on:\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
+      if (runner) runners.set(index, runner);
+      if (/^steps:\s*(?:&[^\s#]+\s*)?(?:#.*)?$/i.test(trimmed)) stepsIndent = indent;
+    }
+  });
+
+  return { actions, runners };
+}
+
+export function createReport({ repository = null, branch = null, filesScanned, findings }) {
+  const critical = findings.filter((finding) => finding.severity === 'critical').length;
+  const warning = findings.filter((finding) => finding.severity === 'warning').length;
+  return {
+    schemaVersion: 1,
+    repository,
+    branch,
+    filesScanned,
+    counts: { critical, warning, total: findings.length },
+    findings,
+  };
+}
+
 export function analyzeWorkflow(file, content) {
   const findings = [];
-  String(content || '').split(/\r?\n/).forEach((text, index) => {
-    const runner = text.match(/^\s*runs-on:\s*['"]?([^'"\s#]+)['"]?/i)?.[1];
+  const lines = String(content || '').split(/\r?\n/);
+  const references = workflowReferences(lines);
+  lines.forEach((text, index) => {
+    const runner = references.runners.get(index);
     const retirement = RUNNER_RETIREMENTS[runner];
     if (retirement) {
       findings.push({
@@ -52,7 +142,8 @@ export function analyzeWorkflow(file, content) {
       });
     }
 
-    const artifact = text.match(/^\s*-?\s*uses:\s*actions\/(upload-artifact|download-artifact)@v([1-3])\b/i);
+    const action = references.actions.get(index);
+    const artifact = action?.match(/^actions\/(upload-artifact|download-artifact)@v([1-3])\b/i);
     if (artifact) {
       findings.push({
         code: 'blocked-action',
@@ -66,7 +157,6 @@ export function analyzeWorkflow(file, content) {
       });
     }
 
-    const action = text.match(/^\s*-?\s*uses:\s*['"]?([^'"\s#]+)['"]?/i)?.[1];
     const replacement = NODE20_ACTION_UPGRADES[action?.toLowerCase()];
     if (replacement) {
       findings.push({

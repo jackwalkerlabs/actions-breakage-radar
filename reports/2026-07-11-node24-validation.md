@@ -1,6 +1,6 @@
 # Node 24 migration validation — 2026-07-11
 
-Actions Breakage Radar's Node 24 rules were run live against three public repositories at 2026-07-11T00:35:02Z using scanner SHA-256 `c050b885af21fbe00cd6cf6ecc917c66485d7907b6b4268de10ab60eff34f513`.
+Actions Breakage Radar's Node 24 rules were run live against three public repositories at 2026-07-11T01:11:17Z using scanner SHA-256 `c7d1682c7a849cbdc5f393c9c5c8d7801b5d20349d62140693b23dade1d1fb5a`.
 
 This is a small convenience validation, not a prevalence estimate.
 

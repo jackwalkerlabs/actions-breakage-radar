@@ -21,29 +21,64 @@ test('analyzeWorkflow flags a retired hosted runner with line evidence', async (
 
 test('analyzeWorkflow flags blocked artifact action versions', async () => {
   const { analyzeWorkflow } = await import('../scanner.js');
-  const findings = analyzeWorkflow('release.yml', 'steps:\n  - uses: actions/upload-artifact@v3\n');
+  const findings = analyzeWorkflow('release.yml', 'jobs:\n  release:\n    steps:\n      - uses: actions/upload-artifact@v3\n');
   assert.equal(findings.length, 1);
   assert.equal(findings[0].code, 'blocked-action');
   assert.equal(findings[0].severity, 'critical');
-  assert.equal(findings[0].line, 2);
+  assert.equal(findings[0].line, 4);
   assert.match(findings[0].fix, /upload-artifact@v4/);
+});
+
+test('analyzeWorkflow supports anchored jobs and steps mappings', async () => {
+  const { analyzeWorkflow } = await import('../scanner.js');
+  const workflow = [
+    'jobs: &all_jobs',
+    '  release: &release_job',
+    '    runs-on: &old_runner ubuntu-20.04',
+    '    steps: &release_steps',
+    '      - uses: &checkout actions/checkout@v4',
+  ].join('\n');
+
+  const findings = analyzeWorkflow('release.yml', workflow);
+
+  assert.equal(findings.length, 2);
+  assert.deepEqual(findings.map((finding) => finding.code), ['retired-runner', 'node20-action']);
+  assert.deepEqual(findings.map((finding) => finding.line), [3, 5]);
+});
+
+test('analyzeWorkflow supports indentationless step sequences', async () => {
+  const { analyzeWorkflow } = await import('../scanner.js');
+  const workflow = [
+    'jobs:',
+    '  release:',
+    '    steps:',
+    '    - uses: actions/upload-artifact@v3',
+  ].join('\n');
+
+  const findings = analyzeWorkflow('release.yml', workflow);
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'blocked-action');
+  assert.equal(findings[0].line, 4);
 });
 
 test('analyzeWorkflow flags known Node 20 action majors with exact Node 24 upgrades', async () => {
   const { analyzeWorkflow } = await import('../scanner.js');
   const workflow = [
-    'steps:',
-    '  - uses: actions/checkout@v4',
-    '  - uses: actions/setup-node@v4',
-    '  - uses: actions/setup-python@v5',
-    '  - uses: actions/cache@v4',
-    '  - uses: actions/upload-artifact@v4',
-    '  - uses: actions/upload-artifact@v5',
-    '  - uses: actions/setup-java@v4',
-    '  - uses: actions/github-script@v7',
-    '  - uses: docker/setup-buildx-action@v3',
-    '  - uses: docker/login-action@v3',
-    '  - uses: actions/checkout@v5',
+    'jobs:',
+    '  test:',
+    '    steps:',
+    '      - uses: actions/checkout@v4',
+    '      - uses: actions/setup-node@v4',
+    '      - uses: actions/setup-python@v5',
+    '      - uses: actions/cache@v4',
+    '      - uses: actions/upload-artifact@v4',
+    '      - uses: actions/upload-artifact@v5',
+    '      - uses: actions/setup-java@v4',
+    '      - uses: actions/github-script@v7',
+    '      - uses: docker/setup-buildx-action@v3',
+    '      - uses: docker/login-action@v3',
+    '      - uses: actions/checkout@v5',
   ].join('\n');
 
   const findings = analyzeWorkflow('ci.yml', workflow);
@@ -56,6 +91,56 @@ test('analyzeWorkflow flags known Node 20 action majors with exact Node 24 upgra
   assert.match(findings[4].fix, /actions\/upload-artifact@v6/);
   assert.match(findings[5].fix, /actions\/upload-artifact@v6/);
   assert.match(findings[0].evidenceUrl, /deprecation-of-node-20/);
+});
+
+test('analyzeWorkflow only treats uses keys on action steps as action references', async () => {
+  const { analyzeWorkflow } = await import('../scanner.js');
+  const workflow = [
+    'env:',
+    '  uses: actions/checkout@v4',
+    '  runs-on: ubuntu-20.04',
+    'jobs:',
+    '  test:',
+    '    runs-on: ubuntu-latest',
+    '    strategy:',
+    '      matrix:',
+    '        steps:',
+    '          - uses: actions/setup-python@v5',
+    '    steps:',
+    '      - name: Keep action-looking text inert',
+    '        env:',
+    '          uses: actions/setup-node@v4',
+    '        run: |',
+    '          uses: actions/cache@v4',
+    '          runs-on: ubuntu-20.04',
+    '      - name: Real action step',
+    '        uses: actions/checkout@v4',
+  ].join('\n');
+
+  const findings = analyzeWorkflow('ci.yml', workflow);
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'node20-action');
+  assert.equal(findings[0].line, 19);
+});
+
+test('createReport provides one shared machine-readable schema', async () => {
+  const { createReport } = await import('../scanner.js');
+  const report = createReport({
+    repository: 'acme/widget',
+    branch: 'main',
+    filesScanned: 2,
+    findings: [{ severity: 'warning', code: 'node20-action' }],
+  });
+
+  assert.deepEqual(report, {
+    schemaVersion: 1,
+    repository: 'acme/widget',
+    branch: 'main',
+    filesScanned: 2,
+    counts: { critical: 0, warning: 1, total: 1 },
+    findings: [{ severity: 'warning', code: 'node20-action' }],
+  });
 });
 
 test('scanRepository fetches public workflow files and returns findings', async () => {
@@ -108,7 +193,7 @@ test('scanRepository reads all workflow-state pages', async () => {
       ] };
     }
     if (url === 'https://raw.example/late.yml') {
-      return { ok: true, status: 200, text: async () => 'steps:\n  - uses: actions/upload-artifact@v3\n' };
+      return { ok: true, status: 200, text: async () => 'jobs:\n  release:\n    steps:\n      - uses: actions/upload-artifact@v3\n' };
     }
     throw new Error(`Unexpected URL: ${url}`);
   };

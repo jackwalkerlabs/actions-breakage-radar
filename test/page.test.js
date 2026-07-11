@@ -37,6 +37,8 @@ test('web app exposes Node 24 migration findings and JSON report export', async 
   assert.match(html, /id="download-report"/);
   assert.match(html, /application\/json/);
   assert.match(html, /actions\/checkout@v4 declares Node 20/);
+  assert.match(html, /import \{ scanRepository, createReport \}/);
+  assert.match(html, /latestReport = createReport\(/);
 });
 
 test('web app links to the latest verifiable public scan report', async () => {

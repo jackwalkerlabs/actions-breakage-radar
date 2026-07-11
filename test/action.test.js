@@ -27,6 +27,8 @@ test('repository CI verifies tests, build, and the Action on pull requests', asy
   assert.match(workflow, /pull_request:/);
   assert.match(workflow, /npm test/);
   assert.match(workflow, /npm run build/);
+  assert.match(workflow, /actions\/setup-node@v5/);
+  assert.match(workflow, /node-version: 24/);
   assert.match(workflow, /uses: \.\//);
   assert.match(workflow, /fail-on-findings: true/);
   assert.match(workflow, /permissions:\n  contents: read/);
@@ -128,7 +130,14 @@ test('runAction writes severity counts and a machine-readable JSON report output
   const summaryPath = join(root, 'summary.md');
   const outputPath = join(root, 'output.txt');
 
-  const result = await runAction({ root, summaryPath, outputPath, writeLine: () => {} });
+  const result = await runAction({
+    root,
+    summaryPath,
+    outputPath,
+    repository: null,
+    branch: null,
+    writeLine: () => {},
+  });
 
   assert.equal(result.criticalFindings, 1);
   assert.equal(result.warnings, 1);
@@ -139,6 +148,8 @@ test('runAction writes severity counts and a machine-readable JSON report output
   const reportLine = output.split('\n').find((line) => line.startsWith('report-json='));
   const report = JSON.parse(reportLine.slice('report-json='.length));
   assert.equal(report.schemaVersion, 1);
+  assert.equal(report.repository, null);
+  assert.equal(report.branch, null);
   assert.equal(report.filesScanned, 1);
   assert.deepEqual(report.counts, { critical: 1, warning: 1, total: 2 });
   assert.deepEqual(report.findings.map((finding) => finding.code), ['node20-action', 'blocked-action']);
