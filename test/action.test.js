@@ -130,7 +130,14 @@ test('runAction writes severity counts and a machine-readable JSON report output
   const summaryPath = join(root, 'summary.md');
   const outputPath = join(root, 'output.txt');
 
-  const result = await runAction({ root, summaryPath, outputPath, writeLine: () => {} });
+  const result = await runAction({
+    root,
+    summaryPath,
+    outputPath,
+    repository: null,
+    branch: null,
+    writeLine: () => {},
+  });
 
   assert.equal(result.criticalFindings, 1);
   assert.equal(result.warnings, 1);
