@@ -50,7 +50,7 @@ function workflowReferences(lines) {
     const indent = text.match(/^ */)[0].length;
 
     if (jobsIndent === null) {
-      if (indent === 0 && /^jobs:\s*(?:&[^\s#]+\s*)?(?:#.*)?$/i.test(trimmed)) jobsIndent = indent;
+      if (indent === 0 && /^(?:jobs|'jobs'|"jobs"):\s*(?:&[^\s#]+\s*)?(?:#.*)?$/i.test(trimmed)) jobsIndent = indent;
       return;
     }
     if (indent <= jobsIndent) {
@@ -76,7 +76,7 @@ function workflowReferences(lines) {
     }
 
     if (stepsIndent !== null) {
-      const item = text.match(/^(\s*)-(\s+)(.*)$/);
+      const item = text.match(/^(\s*)-(?:(\s+)(.*))?$/);
       const isStepItem = Boolean(item && (stepIndent === null ? indent >= stepsIndent : indent === stepIndent));
       if (indent < stepsIndent || (indent === stepsIndent && !isStepItem)) {
         stepsIndent = null;
@@ -85,13 +85,15 @@ function workflowReferences(lines) {
       } else {
         if (isStepItem) {
           stepIndent = indent;
-          stepKeyIndent = indent + 1 + item[2].length;
-          const action = item[3].match(/^uses:\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
+          const itemContent = item[3]?.trim() || '';
+          stepKeyIndent = itemContent && !itemContent.startsWith('#') ? indent + 1 + item[2].length : null;
+          const action = itemContent.match(/^(?:uses|'uses'|"uses"):\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
           if (action) actions.set(index, action);
           return;
         }
+        if (stepIndent !== null && stepKeyIndent === null && indent > stepIndent) stepKeyIndent = indent;
         if (stepKeyIndent !== null && indent === stepKeyIndent) {
-          const action = trimmed.match(/^uses:\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
+          const action = trimmed.match(/^(?:uses|'uses'|"uses"):\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
           if (action) actions.set(index, action);
         }
         return;
@@ -100,9 +102,9 @@ function workflowReferences(lines) {
 
     if (jobPropertyIndent === null) jobPropertyIndent = indent;
     if (indent === jobPropertyIndent) {
-      const runner = trimmed.match(/^runs-on:\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
+      const runner = trimmed.match(/^(?:runs-on|'runs-on'|"runs-on"):\s*(?:&[^\s#]+\s+)?['"]?([^'"\s#]+)['"]?/i)?.[1];
       if (runner) runners.set(index, runner);
-      if (/^steps:\s*(?:&[^\s#]+\s*)?(?:#.*)?$/i.test(trimmed)) stepsIndent = indent;
+      if (/^(?:steps|'steps'|"steps"):\s*(?:&[^\s#]+\s*)?(?:#.*)?$/i.test(trimmed)) stepsIndent = indent;
     }
   });
 

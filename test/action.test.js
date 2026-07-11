@@ -134,8 +134,8 @@ test('runAction writes severity counts and a machine-readable JSON report output
     root,
     summaryPath,
     outputPath,
-    repository: null,
-    branch: null,
+    repository: 'acme/widget',
+    branch: 'main',
     writeLine: () => {},
   });
 
@@ -148,8 +148,8 @@ test('runAction writes severity counts and a machine-readable JSON report output
   const reportLine = output.split('\n').find((line) => line.startsWith('report-json='));
   const report = JSON.parse(reportLine.slice('report-json='.length));
   assert.equal(report.schemaVersion, 1);
-  assert.equal(report.repository, null);
-  assert.equal(report.branch, null);
+  assert.equal(report.repository, 'acme/widget');
+  assert.equal(report.branch, 'main');
   assert.equal(report.filesScanned, 1);
   assert.deepEqual(report.counts, { critical: 1, warning: 1, total: 2 });
   assert.deepEqual(report.findings.map((finding) => finding.code), ['node20-action', 'blocked-action']);

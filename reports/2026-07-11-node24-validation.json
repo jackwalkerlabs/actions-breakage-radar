@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T01:11:17Z",
-  "scannerSha256": "c7d1682c7a849cbdc5f393c9c5c8d7801b5d20349d62140693b23dade1d1fb5a",
+  "generatedAt": "2026-07-11T01:18:48Z",
+  "scannerSha256": "59f351d64f0e621b231e3f019ee59725c58be979b003f3d9baff0506aa8c6eaa",
   "source": {
     "purpose": "Live convenience validation of Node 24 migration rules, not a prevalence estimate",
     "officialNotice": "https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",

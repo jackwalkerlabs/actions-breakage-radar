@@ -46,6 +46,24 @@ test('analyzeWorkflow supports anchored jobs and steps mappings', async () => {
   assert.deepEqual(findings.map((finding) => finding.line), [3, 5]);
 });
 
+test('analyzeWorkflow supports bare-dash step maps and quoted structural keys', async () => {
+  const { analyzeWorkflow } = await import('../scanner.js');
+  const workflow = [
+    '"jobs":',
+    '  release:',
+    "    'runs-on': ubuntu-20.04",
+    '    "steps":',
+    '      -',
+    '        "uses": actions/checkout@v4',
+  ].join('\n');
+
+  const findings = analyzeWorkflow('release.yml', workflow);
+
+  assert.equal(findings.length, 2);
+  assert.deepEqual(findings.map((finding) => finding.code), ['retired-runner', 'node20-action']);
+  assert.deepEqual(findings.map((finding) => finding.line), [3, 6]);
+});
+
 test('analyzeWorkflow supports indentationless step sequences', async () => {
   const { analyzeWorkflow } = await import('../scanner.js');
   const workflow = [
