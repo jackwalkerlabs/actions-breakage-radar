@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Test and build
+        run: |
+          node --version
+          npm test
+          npm run build
+      - name: Dogfood Actions Breakage Radar
+        uses: ./
+        with:
+          fail-on-findings: true

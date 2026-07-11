@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Scan a public repository for GitHub Actions runners and action versions that can break builds.">
+  <meta name="description" content="Scan a public repository for retired runners, blocked action versions, and Node 24 migration risks.">
   <title>Actions Breakage Radar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +53,7 @@
     #status { min-height:28px; max-width:820px; margin:0 auto 14px; color:var(--muted); font:13px "JetBrains Mono",monospace; }
     #status.error { color:var(--danger); }
     #results { max-width:820px; margin:0 auto 96px; display:none; }
-    .summary { display:grid; grid-template-columns:1.5fr repeat(3,1fr); border:1px solid var(--border); border-radius:14px; overflow:hidden; background:var(--panel); }
+    .summary { display:grid; grid-template-columns:1.5fr repeat(4,1fr); border:1px solid var(--border); border-radius:14px; overflow:hidden; background:var(--panel); }
     .metric { padding:20px; border-left:1px solid var(--border2); }
     .metric:first-child { border-left:0; }
     .metric label { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
@@ -61,12 +61,15 @@
     .repo-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:16px "JetBrains Mono",monospace!important; }
     .result-head { margin:34px 0 14px; display:flex; align-items:end; justify-content:space-between; gap:16px; }
     .result-head h2 { margin:0; font-size:22px; letter-spacing:-.4px; font-weight:500; }
+    .result-actions { display:flex; align-items:center; gap:12px; }
     .result-head span { color:var(--muted); font-size:13px; }
+    .result-head button { padding:8px 11px; font-size:12px; }
     .finding { border:1px solid var(--border); border-radius:12px; background:var(--surface); padding:20px; margin:10px 0; }
     .finding-top { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
     .finding h3 { margin:0 0 8px; font-size:16px; font-weight:600; }
     .finding p { color:var(--muted); font-size:14px; line-height:1.6; margin:0 0 14px; }
     .severity { flex:none; font:500 10px "JetBrains Mono",monospace; letter-spacing:.8px; text-transform:uppercase; border:1px solid rgba(255,107,122,.28); color:#ff9aa5; background:rgba(255,107,122,.08); border-radius:999px; padding:5px 8px; }
+    .severity.warning { border-color:rgba(255,193,92,.28); color:#ffd18a; background:rgba(255,193,92,.08); }
     .code { background:#090a0b; border:1px solid var(--border2); border-radius:8px; padding:11px 12px; color:var(--soft); font:12px/1.5 "JetBrains Mono",monospace; overflow-wrap:anywhere; }
     .fix { margin-top:12px; padding-top:12px; border-top:1px solid var(--border2); color:var(--soft); font-size:13px; }
     .fix b { color:var(--good); }
@@ -83,7 +86,7 @@
     .monitoring a { flex:none; border:1px solid rgba(166,165,255,.3); border-radius:9px; padding:11px 14px; color:#c5c4ff; text-decoration:none; font-size:13px; font-weight:600; }
     .monitoring a:hover { background:rgba(113,112,255,.12); }
     footer { padding:30px 0 46px; border-top:1px solid var(--border2); display:flex; justify-content:space-between; color:var(--muted); font-size:12px; gap:20px; }
-    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr}.action-install{grid-template-columns:1fr}.action-install a{width:100%;text-align:center}.summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px}.monitoring{align-items:flex-start;flex-direction:column}.monitoring a{width:100%;text-align:center} footer{flex-direction:column} }
+    @media(max-width:720px) { .hero{padding-top:64px} h1{letter-spacing:-1.6px} form{flex-direction:column} .primary{width:100%} .scanner-footer{flex-direction:column;align-items:flex-start} .scanner-links{flex-direction:column;align-items:flex-start;gap:8px} .trust{grid-template-columns:1fr}.action-install{grid-template-columns:1fr}.action-install a{width:100%;text-align:center}.summary{grid-template-columns:1fr 1fr}.metric:nth-child(odd){border-left:0}.metric{border-top:1px solid var(--border2)}.metric:first-child,.metric:nth-child(2){border-top:0}.result-head{align-items:flex-start;flex-direction:column}.finding-top{display:block}.severity{display:inline-block;margin-bottom:12px}.monitoring{align-items:flex-start;flex-direction:column}.monitoring a{width:100%;text-align:center} footer{flex-direction:column} }
   </style>
 </head>
 <body>
@@ -97,7 +100,7 @@
       <section class="hero">
         <div class="eyebrow"><span class="pulse"></span> Free public-repository audit</div>
         <h1>Will your GitHub Actions break next?</h1>
-        <p class="lede">Find retired runners and blocked action versions before your pipeline finds them for you.</p>
+        <p class="lede">Find retired runners, blocked action versions, and Node 24 migration risks before your pipeline finds them for you.</p>
       </section>
 
       <section class="scanner" aria-label="Repository scanner">
@@ -117,7 +120,7 @@
       <div class="trust">
         <div><strong>No GitHub login</strong><span>Uses GitHub's public API directly from your browser.</span></div>
         <div><strong>Evidence, not vibes</strong><span>Every finding links to source evidence and the exact workflow line.</span></div>
-        <div><strong>Deliberately narrow</strong><span>Only high-confidence breakage checks. Fewer false alarms.</span></div>
+        <div><strong>Node 24 ready</strong><span>Checks ten common action major versions that still declare Node 20.</span></div>
       </div>
 
       <section class="action-install" aria-labelledby="action-install-title">
@@ -135,9 +138,10 @@
           <div class="metric"><label>Repository</label><strong class="repo-name" id="metric-repo">—</strong></div>
           <div class="metric"><label>Workflows</label><strong id="metric-workflows">0</strong></div>
           <div class="metric"><label>Critical</label><strong id="metric-critical">0</strong></div>
+          <div class="metric"><label>Migration</label><strong id="metric-warnings">0</strong></div>
           <div class="metric"><label>Risk score</label><strong id="metric-score">0</strong></div>
         </div>
-        <div class="result-head"><h2>Breakage report</h2><span id="result-note"></span></div>
+        <div class="result-head"><h2>Breakage report</h2><div class="result-actions"><span id="result-note"></span><button id="download-report" type="button">Download JSON</button></div></div>
         <div id="finding-list"></div>
         <div class="monitoring" id="monitoring-cta">
           <div><strong>Want this checked automatically?</strong><p>Register interest in continuous monitoring for the repository scan you just ran. No commitment or payment.</p></div>
@@ -164,6 +168,8 @@
     const list = document.querySelector('#finding-list');
     const monitoringCta = document.querySelector('#monitoring-cta');
     const monitoringLink = document.querySelector('#monitoring-link');
+    const downloadReport = document.querySelector('#download-report');
+    let latestReport = null;
 
     const el = (tag, className, text) => {
       const node = document.createElement(tag);
@@ -174,10 +180,20 @@
 
     function render(report, demo = false) {
       const critical = report.findings.filter((item) => item.severity === 'critical').length;
-      const score = Math.min(100, critical * 35);
+      const warnings = report.findings.filter((item) => item.severity === 'warning').length;
+      const score = Math.min(100, critical * 35 + warnings * 10);
+      latestReport = {
+        schemaVersion: 1,
+        repository: report.repository,
+        branch: report.branch,
+        workflowCount: report.workflowCount,
+        counts: { critical, warning: warnings, total: report.findings.length },
+        findings: report.findings,
+      };
       document.querySelector('#metric-repo').textContent = report.repository;
       document.querySelector('#metric-workflows').textContent = report.workflowCount;
       document.querySelector('#metric-critical').textContent = critical;
+      document.querySelector('#metric-warnings').textContent = warnings;
       document.querySelector('#metric-score').textContent = `${score}/100`;
       document.querySelector('#result-note').textContent = demo ? 'Illustrative fixture — not a live repository' : `default branch: ${report.branch}`;
       list.replaceChildren();
@@ -195,7 +211,7 @@
         list.append(empty);
       } else if (!report.findings.length) {
         const empty = el('div', 'empty');
-        empty.append(el('strong', '', 'No known critical breakage found'), el('p', '', 'The checked workflows avoid the retired runners and blocked action versions in this scanner. This is a focused check, not a guarantee that every build will pass.'));
+        empty.append(el('strong', '', 'No known critical breakage or Node 24 migration risk found'), el('p', '', 'The checked workflows avoid this scanner’s retired runners, blocked action versions, and known Node 20 action majors. This is a focused check, not a guarantee that every build will pass.'));
         list.append(empty);
       } else {
         for (const item of report.findings) {
@@ -203,7 +219,7 @@
           const top = el('div', 'finding-top');
           const copy = el('div');
           copy.append(el('h3', '', item.title), el('p', '', item.detail));
-          top.append(copy, el('span', 'severity', item.severity));
+          top.append(copy, el('span', `severity ${item.severity}`, item.severity));
           card.append(top, el('div', 'code', `${item.file}:${item.line}`));
           const fix = el('div', 'fix');
           fix.append(el('b', '', 'Fix: '), document.createTextNode(item.fix));
@@ -245,6 +261,17 @@
       }
     }
 
+    downloadReport.addEventListener('click', () => {
+      if (!latestReport) return;
+      const blob = new Blob([`${JSON.stringify(latestReport, null, 2)}\n`], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${latestReport.repository.replace('/', '-')}-actions-breakage-report.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       runScan(input.value);
@@ -257,7 +284,8 @@
         repository:'example/risky-pipeline', branch:'main', workflowCount:2,
         findings:[
           { severity:'critical', title:'ubuntu-20.04 is retired', detail:'GitHub no longer provides this hosted runner image, so jobs can stop starting.', file:'.github/workflows/ci.yml', line:12, fix:'Move this job to ubuntu-24.04 and test it before merging.', evidenceUrl:'https://github.com/actions/runner-images/issues/11101' },
-          { severity:'critical', title:'actions/upload-artifact@v3 is blocked', detail:'GitHub retired v1-v3 of the artifact actions on GitHub.com, so this step can fail immediately.', file:'.github/workflows/release.yml', line:28, fix:'Upgrade to actions/upload-artifact@v4 and review the v4 migration notes.', evidenceUrl:'https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/' }
+          { severity:'critical', title:'actions/upload-artifact@v3 is blocked', detail:'GitHub retired v1-v3 of the artifact actions on GitHub.com, so this step can fail immediately.', file:'.github/workflows/release.yml', line:28, fix:'Upgrade to actions/upload-artifact@v4 and review the v4 migration notes.', evidenceUrl:'https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/' },
+          { severity:'warning', title:'actions/checkout@v4 declares Node 20', detail:'GitHub runners began defaulting JavaScript actions to Node 24 on June 16, 2026; this major version still declares Node 20 in its action metadata.', file:'.github/workflows/ci.yml', line:8, fix:'Upgrade to actions/checkout@v5 and test the workflow on Node 24.', evidenceUrl:'https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/' }
         ]
       }, true);
     });

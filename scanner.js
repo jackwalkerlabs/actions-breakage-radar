@@ -19,6 +19,21 @@ const RUNNER_RETIREMENTS = {
   }
 };
 
+const NODE20_ACTION_UPGRADES = {
+  'actions/checkout@v4': 'actions/checkout@v5',
+  'actions/setup-node@v4': 'actions/setup-node@v5',
+  'actions/setup-python@v5': 'actions/setup-python@v6',
+  'actions/cache@v4': 'actions/cache@v5',
+  'actions/upload-artifact@v4': 'actions/upload-artifact@v6',
+  'actions/upload-artifact@v5': 'actions/upload-artifact@v6',
+  'actions/setup-java@v4': 'actions/setup-java@v5',
+  'actions/github-script@v7': 'actions/github-script@v8',
+  'docker/setup-buildx-action@v3': 'docker/setup-buildx-action@v4',
+  'docker/login-action@v3': 'docker/login-action@v4'
+};
+
+const NODE20_EVIDENCE_URL = 'https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/';
+
 export function analyzeWorkflow(file, content) {
   const findings = [];
   String(content || '').split(/\r?\n/).forEach((text, index) => {
@@ -48,6 +63,21 @@ export function analyzeWorkflow(file, content) {
         detail: 'GitHub retired v1-v3 of the artifact actions on GitHub.com, so this step can fail immediately.',
         fix: `Upgrade to actions/${artifact[1]}@v4 and review the v4 migration notes.`,
         evidenceUrl: 'https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/'
+      });
+    }
+
+    const action = text.match(/^\s*-?\s*uses:\s*['"]?([^'"\s#]+)['"]?/i)?.[1];
+    const replacement = NODE20_ACTION_UPGRADES[action?.toLowerCase()];
+    if (replacement) {
+      findings.push({
+        code: 'node20-action',
+        severity: 'warning',
+        file,
+        line: index + 1,
+        title: `${action} declares Node 20`,
+        detail: 'GitHub runners began defaulting JavaScript actions to Node 24 on June 16, 2026; this major version still declares Node 20 in its action metadata.',
+        fix: `Upgrade to ${replacement} and test the workflow on Node 24.`,
+        evidenceUrl: NODE20_EVIDENCE_URL
       });
     }
   });

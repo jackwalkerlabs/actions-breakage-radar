@@ -29,6 +29,35 @@ test('analyzeWorkflow flags blocked artifact action versions', async () => {
   assert.match(findings[0].fix, /upload-artifact@v4/);
 });
 
+test('analyzeWorkflow flags known Node 20 action majors with exact Node 24 upgrades', async () => {
+  const { analyzeWorkflow } = await import('../scanner.js');
+  const workflow = [
+    'steps:',
+    '  - uses: actions/checkout@v4',
+    '  - uses: actions/setup-node@v4',
+    '  - uses: actions/setup-python@v5',
+    '  - uses: actions/cache@v4',
+    '  - uses: actions/upload-artifact@v4',
+    '  - uses: actions/upload-artifact@v5',
+    '  - uses: actions/setup-java@v4',
+    '  - uses: actions/github-script@v7',
+    '  - uses: docker/setup-buildx-action@v3',
+    '  - uses: docker/login-action@v3',
+    '  - uses: actions/checkout@v5',
+  ].join('\n');
+
+  const findings = analyzeWorkflow('ci.yml', workflow);
+
+  assert.equal(findings.length, 10);
+  assert.deepEqual(findings.map((finding) => finding.code), Array(10).fill('node20-action'));
+  assert.deepEqual(findings.map((finding) => finding.severity), Array(10).fill('warning'));
+  assert.match(findings[0].title, /actions\/checkout@v4 declares Node 20/);
+  assert.match(findings[0].fix, /actions\/checkout@v5/);
+  assert.match(findings[4].fix, /actions\/upload-artifact@v6/);
+  assert.match(findings[5].fix, /actions\/upload-artifact@v6/);
+  assert.match(findings[0].evidenceUrl, /deprecation-of-node-20/);
+});
+
 test('scanRepository fetches public workflow files and returns findings', async () => {
   const { scanRepository } = await import('../scanner.js');
   const responses = new Map([
