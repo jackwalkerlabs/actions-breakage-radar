@@ -43,7 +43,7 @@ For downstream automation, the `report-json` output is compact schema-versioned 
   run: printf '%s\n' "$RADAR_REPORT" | jq .
 ```
 
-The browser report has the same schema and can be downloaded with **Download JSON**.
+The browser report has the same schema and can be downloaded with **Download JSON**. Both surfaces return `schemaVersion`, `repository`, `branch`, `filesScanned`, `counts`, and `findings`; repository context is `null` when the local Action runtime does not provide it.
 
 ## Public field scan
 
